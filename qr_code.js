@@ -52,7 +52,7 @@ function getByteData(str, bitLength, codewordLength){
 
     //fill the remaining bytes with 17 and 236
     const remaining = codewordLength - str.length - dataIndexStart - 1;
-    console.log(remaining)
+    //console.log(remaining)
     for(let i = 0; i < remaining; i++){
         //console.log(i);
         //first number is 236, then followed by 17, then repeat until the final length is reached
@@ -62,5 +62,53 @@ function getByteData(str, bitLength, codewordLength){
 
     return data;
 }
+
+//Galois field GF(256) exponents and log
+const EXP = new Uint8Array(256);
+const LOG = new Uint8Array(256);
+for(let n = 1, value = 1; n < 256; n++) {
+    value = value > 127 ? (value << 1) ^ 285 : value << 1;
+    EXP[n % 255] = value;
+    LOG[value] = n % 255;
+} 
+
+//Multiplication and division in GF(256)
+function GF256Mul(a, b) {
+    const result = a && b > 0 ? EXP[(LOG[a] + LOG[b]) % 255] : 0;
+    return result;
+} 
+
+function GF256Div (a, b) {
+    const result = LOG[(EXP[a] + EXP[b] * 254) % 255];
+}
+
+function polyMult (a, b) {
+    const result = new Uint8Array(a.length + b.length - 1);
+    for(let i = 0; i < a.length; i++) {
+        for(let j = 0; j < b.length; j++) {
+            result[i+j] ^= GF256Mul(a[i], b[j]);
+        }
+    }
+
+    return result;
+
+}
+
+//console.log(polyMult([1,3,2], [1,4]));
+
+function generatePolyForGF(codewords){
+    let result = new Uint8Array([1]);
+    for(let i = 0; i < codewords; i++) {
+        //console.log(result);
+        result = polyMult(result, new Uint8Array([1, EXP[i]]));
+    }
+    return result;
+}
+
+
+console.log(EXP);
+console.log(LOG);
+console.log(GF256Mul(3,4))
+console.log(generatePolyForGF(16))
 
 console.log(getByteData('https://www.qrcode.com/', 8, 28))
